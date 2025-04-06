@@ -1,0 +1,234 @@
+
+' strategy pattern
+@startuml
+class ast_channel {
+    + const char *name
+    + struct ast_channel_tech *tech
+    + int state
+    + struct ast_format_cap *formats
+    + void *pvt
+    --
+    + int ast_hangup()
+    + struct ast_frame *ast_read()
+    + int ast_call(const char *addr, int timeout)
+}
+
+class ast_channel_tech {
+    + const char *type
+    + const char *description
+    + struct ast_format_cap *capabilities
+    --
+    + struct ast_channel *requester(const char *type, struct ast_format_cap *cap, ...)
+    + int hangup(struct ast_channel *chan)
+    + struct ast_frame *read(struct ast_channel *chan)
+    + int call(struct ast_channel *chan, const char *addr, int timeout)
+}
+
+class sip_channel_tech {
+    + struct ast_channel *sip_requester(const char *type, struct ast_format_cap *cap, ...)
+    + int sip_hangup(struct ast_channel *chan)
+    + struct ast_frame *sip_read(struct ast_channel *chan)
+    + int sip_call(struct ast_channel *chan, const char *addr, int timeout)
+}
+
+class iax2_channel_tech {
+    + struct ast_channel *iax2_requester(const char *type, struct ast_format_cap *cap, ...)
+    + int iax2_hangup(struct ast_channel *chan)
+    + struct ast_frame *iax2_read(struct ast_channel *chan)
+    + int iax2_call(struct ast_channel *chan, const char *addr, int timeout)
+}
+
+class ast_format_cap {
+    + int format_id
+    + const char *format_name
+}
+
+class ast_frame {
+    + int frametype
+    + int subclass
+    + void *data
+}
+
+ast_channel --> ast_channel_tech : uses
+ast_channel --> ast_format_cap : supports
+ast_channel_tech --> ast_format_cap : handles
+ast_channel --> ast_frame : reads/writes
+
+ast_channel_tech <|-- sip_channel_tech : implements
+ast_channel_tech <|-- iax2_channel_tech : implements
+
+
+' template pattern
+@startuml
+interface ast_channel_tech {
+    + const char *type
+    + const char *description
+    --
+    + struct ast_channel *requester(const char *type, struct ast_format_cap *cap, ...)
+    + int call(struct ast_channel *chan, const char *addr, int timeout)
+    + int hangup(struct ast_channel *chan)
+    + int answer(struct ast_channel *chan)
+}
+
+class sip_channel_tech {
+    + struct ast_channel *sip_requester(const char *type, struct ast_format_cap *cap, ...)
+    + int sip_call(struct ast_channel *chan, const char *addr, int timeout)
+    + int sip_hangup(struct ast_channel *chan)
+    + int sip_answer(struct ast_channel *chan)
+}
+
+class iax2_channel_tech {
+    + struct ast_channel *iax2_requester(const char *type, struct ast_format_cap *cap, ...)
+    + int iax2_call(struct ast_channel *chan, const char *addr, int timeout)
+    + int iax2_hangup(struct ast_channel *chan)
+    + int iax2_answer(struct ast_channel *chan)
+}
+
+class dahdi_channel_tech {
+    + struct ast_channel *dahdi_requester(const char *type, struct ast_format_cap *cap, ...)
+    + int dahdi_call(struct ast_channel *chan, const char *addr, int timeout)
+    + int dahdi_hangup(struct ast_channel *chan)
+    + int dahdi_answer(struct ast_channel *chan)
+}
+
+class ast_channel {
+    + const char *name
+    + struct ast_channel_tech *tech
+    --
+    + int make_call(const char *addr, int timeout)
+    + int end_call()
+    + int answer_call()
+}
+
+ast_channel --> ast_channel_tech : uses
+ast_channel_tech <|.. sip_channel_tech : implements
+ast_channel_tech <|.. iax2_channel_tech : implements
+ast_channel_tech <|.. dahdi_channel_tech : implements
+
+
+
+' observer pattern
+@startuml
+interface EventListener {
+    + void onEvent(Event event)
+}
+
+class Event {
+    + const char *type
+    + const char *data
+}
+
+class EventManager {
+    + void addListener(EventListener *listener)
+    + void removeListener(EventListener *listener)
+    + void notify(Event *event)
+    --
+    - List<EventListener *> listeners
+}
+
+class AMIListener {
+    + void onEvent(Event event)
+}
+
+class StasisListener {
+    + void onEvent(Event event)
+}
+
+class ast_channel {
+    + const char *name
+    + void changeState(const char *newState)
+    --
+    - EventManager *eventManager
+}
+
+EventManager --> Event : notifies
+EventManager o-- EventListener : manages
+EventListener <|.. AMIListener : implements
+EventListener <|.. StasisListener : implements
+ast_channel --> EventManager : uses
+
+' factory pattern
+@startuml
+class ast_request {
+    + struct ast_channel *request(const char *type, struct ast_format_cap *cap, ...)
+    --
+    - struct ast_channel_tech *findChannelTech(const char *type)
+}
+
+class ast_channel {
+    + const char *name
+    + struct ast_channel_tech *tech
+    + int state
+    --
+    + void makeCall(const char *addr, int timeout)
+    + void hangup()
+}
+
+class ast_channel_tech {
+    + const char *type
+    + const char *description
+    --
+    + struct ast_channel *requester(const char *type, struct ast_format_cap *cap, ...)
+}
+
+class sip_channel_tech {
+    + struct ast_channel *sip_requester(const char *type, struct ast_format_cap *cap, ...)
+}
+
+class iax2_channel_tech {
+    + struct ast_channel *iax2_requester(const char *type, struct ast_format_cap *cap, ...)
+}
+
+class dahdi_channel_tech {
+    + struct ast_channel *dahdi_requester(const char *type, struct ast_format_cap *cap, ...)
+}
+
+ast_request --> ast_channel : creates
+ast_request --> ast_channel_tech : uses
+ast_channel_tech <|.. sip_channel_tech : implements
+ast_channel_tech <|.. iax2_channel_tech : implements
+ast_channel_tech <|.. dahdi_channel_tech : implements
+
+' adapter pattern
+@startuml
+interface ast_channel_tech {
+    + struct ast_channel *requester(const char *type, struct ast_format_cap *cap, ...)
+    + int call(struct ast_channel *chan, const char *addr, int timeout)
+    + int hangup(struct ast_channel *chan)
+    + int answer(struct ast_channel *chan)
+}
+
+class sip_channel_tech {
+    + struct ast_channel *sip_requester(const char *type, struct ast_format_cap *cap, ...)
+    + int sip_call(struct ast_channel *chan, const char *addr, int timeout)
+    + int sip_hangup(struct ast_channel *chan)
+    + int sip_answer(struct ast_channel *chan)
+}
+
+class iax2_channel_tech {
+    + struct ast_channel *iax2_requester(const char *type, struct ast_format_cap *cap, ...)
+    + int iax2_call(struct ast_channel *chan, const char *addr, int timeout)
+    + int iax2_hangup(struct ast_channel *chan)
+    + int iax2_answer(struct ast_channel *chan)
+}
+
+class dahdi_channel_tech {
+    + struct ast_channel *dahdi_requester(const char *type, struct ast_format_cap *cap, ...)
+    + int dahdi_call(struct ast_channel *chan, const char *addr, int timeout)
+    + int dahdi_hangup(struct ast_channel *chan)
+    + int dahdi_answer(struct ast_channel *chan)
+}
+
+class ast_channel {
+    + const char *name
+    + struct ast_channel_tech *tech
+    --
+    + void makeCall(const char *addr, int timeout)
+    + void hangup()
+    + void answer()
+}
+
+ast_channel --> ast_channel_tech : uses
+ast_channel_tech <|.. sip_channel_tech : adapts
+ast_channel_tech <|.. iax2_channel_tech : adapts
+ast_channel_tech <|.. dahdi_channel_tech : adapts
