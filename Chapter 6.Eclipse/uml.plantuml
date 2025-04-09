@@ -1,0 +1,79 @@
+@startuml
+package "org.eclipse.core.resources" {
+
+    ' Composite パターン
+    interface IResource {
+        + String getName()
+        + IProject getProject()
+        + void delete(int updateFlags, IProgressMonitor monitor)
+        + void refreshLocal(int depth, IProgressMonitor monitor)
+    }
+
+    interface IContainer extends IResource {
+        + IResource[] members()
+        + IFolder getFolder(String name)
+        + IFile getFile(String name)
+    }
+
+    interface IFile extends IResource {
+        + InputStream getContents()
+        + void setContents(InputStream source, int updateFlags, IProgressMonitor monitor)
+    }
+
+    interface IFolder extends IContainer {
+        + void create(boolean force, boolean local, IProgressMonitor monitor)
+    }
+
+    interface IProject extends IContainer {
+        + void open(IProgressMonitor monitor)
+        + void close(IProgressMonitor monitor)
+        + boolean isOpen()
+    }
+
+    ' Observer パターン
+    interface IResourceChangeListener {
+        + void resourceChanged(IResourceChangeEvent event)
+    }
+
+    interface IResourceChangeEvent {
+        + IResource getResource()
+        + int getType()
+    }
+
+    class Workspace implements IWorkspace {
+        + IProject[] getProjects()
+        + void addResourceChangeListener(IResourceChangeListener listener)
+        + void removeResourceChangeListener(IResourceChangeListener listener)
+    }
+
+    ' Facade パターン
+    interface IWorkspace {
+        + IProject[] getProjects()
+        + IProject getRoot()
+        + void addResourceChangeListener(IResourceChangeListener listener)
+        + void removeResourceChangeListener(IResourceChangeListener listener)
+    }
+
+    ' Template Method パターン
+    abstract class AbstractResource implements IResource {
+        + String getName()
+        + IProject getProject()
+        + void delete(int updateFlags, IProgressMonitor monitor)
+        + void refreshLocal(int depth, IProgressMonitor monitor)
+        # abstract void doDelete(int updateFlags, IProgressMonitor monitor)
+    }
+
+    AbstractResource <|-- IFile
+    AbstractResource <|-- IFolder
+    AbstractResource <|-- IProject
+
+    ' 関係の定義
+    IWorkspace <|-- Workspace
+    IResource <|-- IContainer
+    IContainer <|-- IFolder
+    IContainer <|-- IProject
+    IContainer <|-- IFile
+    IResourceChangeListener --> IResourceChangeEvent
+    IWorkspace --> IResource
+}
+@enduml
