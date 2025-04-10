@@ -1,0 +1,247 @@
+@startuml
+class ngx_event_t {
+    + void *data
+    + unsigned active
+    + unsigned ready
+    + void (*handler)(ngx_event_t *ev)
+}
+
+class ngx_connection_t {
+    + ngx_event_t *read
+    + ngx_event_t *write
+    + ngx_socket_t fd
+    + void *data
+}
+
+class ngx_cycle_t {
+    + ngx_connection_t *connections
+    + ngx_event_t *read_events
+    + ngx_event_t *write_events
+    + ngx_uint_t connection_n
+    + ngx_log_t *log
+}
+
+class ngx_event_actions_t {
+    + ngx_int_t (*add)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
+    + ngx_int_t (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
+    + ngx_int_t (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
+}
+
+class ngx_event_module_t {
+    + ngx_event_actions_t actions
+}
+
+class ngx_accept_mutex {
+    + ngx_atomic_t *mutex
+    + ngx_uint_t held
+}
+
+ngx_cycle_t "1" --> "*" ngx_connection_t : manages
+ngx_connection_t "1" --> "1" ngx_event_t : read/write
+ngx_event_t "1" --> "*" ngx_event_actions_t : uses
+ngx_cycle_t "1" --> "*" ngx_event_module_t : modules
+ngx_event_module_t "1" --> "1" ngx_event_actions_t : provides
+ngx_cycle_t "1" --> "1" ngx_accept_mutex : uses
+@enduml
+
+@startuml
+actor User
+participant ngx_cycle_t as Cycle
+participant ngx_event_t as Event
+participant ngx_event_actions_t as EventActions
+participant ngx_connection_t as Connection
+participant ngx_accept_mutex as AcceptMutex
+
+User -> Cycle: リクエスト送信
+Cycle -> AcceptMutex: accept_mutexを取得
+AcceptMutex --> Cycle: mutex取得成功
+
+Cycle -> EventActions: process_events(timer, flags)
+EventActions -> Event: イベントを処理
+Event -> Connection: データ読み取り/書き込み
+Connection -> Event: 処理完了
+EventActions --> Cycle: イベント処理完了
+
+Cycle -> AcceptMutex: accept_mutexを解放
+@enduml
+
+@startuml
+[*] --> Inactive : 初期状態
+
+Inactive --> Active : add_event()
+Active --> Ready : イベントが準備完了
+Ready --> Processing : handler()が呼び出される
+Processing --> Active : 処理完了
+Processing --> Inactive : del_event()
+@enduml
+
+
+@startuml
+title NGINX Event Module Function Relationships
+
+class ngx_event_process_init {
+    + Initializes worker processes
+    + Selects event modules (e.g., epoll, kqueue)
+    + Prepares listening sockets
+    + Initializes event queues and connection pools
+}
+
+class ngx_event_module_init {
+    + Initializes shared memory
+    + Sets up accept_mutex for process synchronization
+}
+
+class ngx_event_core_create_conf {
+    + Creates event configuration structure
+    + Sets default values
+}
+
+class ngx_event_core_init_conf {
+    + Initializes event configuration
+    + Selects event driver (e.g., epoll)
+}
+
+class ngx_handle_read_event {
+    + Registers or removes read events
+    + Handles edge-triggered and level-triggered events
+}
+
+class ngx_handle_write_event {
+    + Registers or removes write events
+    + Configures low-water mark for efficient data transmission
+}
+
+class ngx_events_block {
+    + Parses "events" block in configuration
+    + Initializes event modules
+}
+
+class ngx_event_connections {
+    + Configures worker_connections directive
+}
+
+class ngx_event_use {
+    + Configures use directive for event driver
+}
+
+class ngx_process_events_and_timers {
+    + Core event loop
+    + Processes events and timers
+    + Manages accept_mutex for process synchronization
+}
+
+ngx_event_process_init --> ngx_event_module_init : Calls
+ngx_event_process_init --> ngx_event_core_create_conf : Uses
+ngx_event_process_init --> ngx_event_core_init_conf : Uses
+ngx_event_process_init --> ngx_handle_read_event : Uses
+ngx_event_process_init --> ngx_handle_write_event : Uses
+
+ngx_event_module_init --> ngx_event_core_create_conf : Uses
+ngx_event_module_init --> ngx_event_core_init_conf : Uses
+
+ngx_events_block --> ngx_event_connections : Calls
+ngx_events_block --> ngx_event_use : Calls
+ngx_events_block --> ngx_event_core_create_conf : Calls
+ngx_events_block --> ngx_event_core_init_conf : Calls
+
+ngx_process_events_and_timers --> ngx_handle_read_event : Calls
+ngx_process_events_and_timers --> ngx_handle_write_event : Calls
+ngx_process_events_and_timers --> ngx_event_module_init : Calls
+@enduml
+
+@startuml
+title NGINX Connection Module Function Relationships
+
+class ngx_create_listening {
+    + Creates a listening socket
+    + Initializes sockaddr and socket options
+}
+
+class ngx_clone_listening {
+    + Clones listening sockets for worker processes
+    + Handles SO_REUSEPORT for multi-process setups
+}
+
+class ngx_set_inherited_sockets {
+    + Configures inherited sockets
+    + Retrieves socket options and initializes sockaddr
+}
+
+class ngx_open_listening_sockets {
+    + Opens listening sockets
+    + Configures socket options (e.g., SO_REUSEADDR, SO_REUSEPORT)
+}
+
+class ngx_configure_listening_sockets {
+    + Configures additional socket options
+    + Handles deferred accept and TCP_FASTOPEN
+}
+
+class ngx_close_listening_sockets {
+    + Closes all listening sockets
+    + Cleans up associated resources
+}
+
+class ngx_get_connection {
+    + Retrieves a free connection from the connection pool
+    + Initializes read/write events
+}
+
+class ngx_free_connection {
+    + Returns a connection to the free connection pool
+    + Cleans up associated resources
+}
+
+class ngx_close_connection {
+    + Closes a connection
+    + Removes associated events and cleans up resources
+}
+
+class ngx_reusable_connection {
+    + Marks a connection as reusable or non-reusable
+    + Updates the reusable connections queue
+}
+
+class ngx_drain_connections {
+    + Reuses connections when the connection pool is exhausted
+    + Frees up reusable connections
+}
+
+class ngx_close_idle_connections {
+    + Closes idle connections
+    + Invokes read event handlers for cleanup
+}
+
+class ngx_connection_local_sockaddr {
+    + Retrieves the local sockaddr for a connection
+    + Formats the address as a string
+}
+
+class ngx_tcp_nodelay {
+    + Enables TCP_NODELAY for a connection
+    + Configures socket options for low-latency communication
+}
+
+class ngx_connection_error {
+    + Logs connection-related errors
+    + Handles specific error codes (e.g., ECONNRESET, ETIMEDOUT)
+}
+
+' Relationships between functions
+ngx_create_listening --> ngx_clone_listening : Calls
+ngx_clone_listening --> ngx_set_inherited_sockets : Calls
+ngx_open_listening_sockets --> ngx_create_listening : Calls
+ngx_open_listening_sockets --> ngx_clone_listening : Calls
+ngx_configure_listening_sockets --> ngx_open_listening_sockets : Calls
+ngx_close_listening_sockets --> ngx_open_listening_sockets : Calls
+
+ngx_get_connection --> ngx_drain_connections : Calls
+ngx_free_connection --> ngx_get_connection : Calls
+ngx_close_connection --> ngx_free_connection : Calls
+ngx_close_connection --> ngx_reusable_connection : Calls
+ngx_drain_connections --> ngx_reusable_connection : Calls
+ngx_close_idle_connections --> ngx_close_connection : Calls
+
+ngx_connection_local_sockaddr --> ngx_connection_error : Calls
+ngx_tcp_nodelay --> ngx_connection_error : Calls
+@enduml
