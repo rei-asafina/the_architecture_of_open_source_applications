@@ -1,0 +1,145 @@
+@startuml
+title Mantine AppShell Component Design
+
+class AppShell {
+  + withBorder: boolean
+  + padding: MantineSpacing | AppShellResponsiveSize
+  + navbar: AppShellNavbarConfiguration
+  + aside: AppShellAsideConfiguration
+  + header: AppShellHeaderConfiguration
+  + footer: AppShellFooterConfiguration
+  + transitionDuration: number
+  + transitionTimingFunction: string
+  + zIndex: string | number
+  + layout: "default" | "alt"
+  + disabled: boolean
+  + offsetScrollbars: boolean
+  --
+  + AppShell.Navbar
+  + AppShell.Header
+  + AppShell.Main
+  + AppShell.Aside
+  + AppShell.Footer
+  + AppShell.Section
+}
+
+class AppShellProvider {
+  + value: { getStyles, withBorder, zIndex, disabled, offsetScrollbars }
+}
+
+class AppShellMediaStyles {
+  + navbar: AppShellNavbarConfiguration
+  + header: AppShellHeaderConfiguration
+  + aside: AppShellAsideConfiguration
+  + footer: AppShellFooterConfiguration
+  + padding: MantineSpacing | AppShellResponsiveSize
+}
+
+class AppShellNavbar {
+  + width: number
+  + collapsed: boolean
+  + breakpoints: AppShellResponsiveSize
+}
+
+class AppShellHeader {
+  + height: number
+  + offset: number
+  + collapsed: boolean
+}
+
+class AppShellMain {
+  + content: JSX.Element
+}
+
+class AppShellAside {
+  + width: number
+  + collapsed: boolean
+  + breakpoints: AppShellResponsiveSize
+}
+
+class AppShellFooter {
+  + height: number
+  + offset: number
+  + collapsed: boolean
+}
+
+class AppShellSection {
+  + content: JSX.Element
+}
+
+AppShell --> AppShellProvider : "Provides context"
+AppShell --> AppShellMediaStyles : "Manages styles"
+AppShell --> AppShellNavbar : "Static component"
+AppShell --> AppShellHeader : "Static component"
+AppShell --> AppShellMain : "Static component"
+AppShell --> AppShellAside : "Static component"
+AppShell --> AppShellFooter : "Static component"
+AppShell --> AppShellSection : "Static component"
+
+@enduml
+
+@startuml
+title React Component-Based Architecture
+
+' 基本的なReactコンポーネント
+class ReactComponent {
+  + props: object
+  + state: object
+  + setState(newState): void
+  + render(): JSX.Element
+}
+
+' 関数コンポーネント
+class FunctionComponent {
+  + props: object
+  + useState(initialState): [state, setState]
+  + useEffect(effect, dependencies): void
+}
+
+' クラスコンポーネント
+class ClassComponent {
+  + props: object
+  + state: object
+  + setState(newState): void
+  + componentDidMount(): void
+  + componentDidUpdate(prevProps, prevState): void
+  + componentWillUnmount(): void
+  + render(): JSX.Element
+}
+
+' コンテキストAPI
+class Context {
+  + Provider: ContextProvider
+  + Consumer: ContextConsumer
+  + createContext(defaultValue): Context
+}
+
+class ContextProvider {
+  + value: any
+  + children: ReactNode
+}
+
+class ContextConsumer {
+  + children: (value: any) => ReactNode
+}
+
+' フック
+class ReactHooks {
+  + useState(initialState): [state, setState]
+  + useEffect(effect, dependencies): void
+  + useContext(Context): any
+  + useReducer(reducer, initialState): [state, dispatch]
+  + useRef(initialValue): RefObject
+}
+
+' 関係性
+ReactComponent <|-- FunctionComponent : Extends
+ReactComponent <|-- ClassComponent : Extends
+ReactComponent --> Context : Uses
+Context --> ContextProvider : Provides
+Context --> ContextConsumer : Consumes
+ReactComponent --> ReactHooks : Uses
+
+@enduml
+
+
