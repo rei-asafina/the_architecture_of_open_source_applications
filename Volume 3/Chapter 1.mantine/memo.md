@@ -54,3 +54,6 @@ export function useDisclosure(
 }
 ```
 mantine/packages/@mantine/hooks/src/use-disclosure/use-disclosure.ts
+
+「どう実現するか」ではなく「何を実現するか」に集中できるようにすること。
+ツールの流行り廃りはあるが、 How への認知負荷を下げるという大きな流れは変わらないと感じた。
