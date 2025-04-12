@@ -51,7 +51,7 @@ NGINXのイベント駆動型アーキテクチャの中核を担う。イベン
   - イベントループの中核処理を行い、タイマーやイベントを管理する。
 
 ### ngx_connection.c
-NGINXの接続管理の中核を担い、効率的でスケーラブルな接続処理を実現している。接続のライフサイクル（取得、使用、解放）を明確に分離し、ngx_get_connection や ngx_free_connection を通じて接続プールを管理することで、リソースの効率的な利用を可能に。また、ngx_tcp_nodelay や ngx_configure_listening_sockets によるソケットオプションの柔軟な設定により、低遅延通信や高負荷環境への対応が可能。さらに、ngx_reusable_connection や ngx_drain_connections による再利用可能な接続の管理は、接続プールの枯渇を防ぎ、安定性を向上させる。全体として、接続管理の設計は高い拡張性と信頼性を備えている。
+NGINXの接続管理の中核を担い、効率的でスケーラブルな接続処理を実現している。接続のライフサイクル（取得、使用、解放）を明確に分離し、 [ngx_get_connection](https://github.com/nginx/nginx/blob/b6e7eb0f5792d7a52d2675ee3906e502d63c48e3/src/core/ngx_connection.c#L1174-L1237) や  [ngx_free_connection](https://github.com/nginx/nginx/blob/b6e7eb0f5792d7a52d2675ee3906e502d63c48e3/src/core/ngx_connection.c#L1240-L1250) を通じて接続プールを管理することで、リソースの効率的な利用を可能に。また、 [ngx_tcp_nodelay](https://github.com/nginx/nginx/blob/b6e7eb0f5792d7a52d2675ee3906e502d63c48e3/src/core/ngx_connection.c#L1521-L1561) や   [ngx_configure_listening_sockets](https://github.com/nginx/nginx/blob/b6e7eb0f5792d7a52d2675ee3906e502d63c48e3/src/core/ngx_connection.c#L715-L1092) によるソケットオプションの柔軟な設定により、低遅延通信や高負荷環境への対応が可能。さらに、 [ngx_reusable_connection](https://github.com/nginx/nginx/blob/b6e7eb0f5792d7a52d2675ee3906e502d63c48e3/src/core/ngx_connection.c#L1341-L1369) や  [ngx_drain_connections](https://github.com/nginx/nginx/blob/b6e7eb0f5792d7a52d2675ee3906e502d63c48e3/src/core/ngx_connection.c#L1372-L1426) による再利用可能な接続の管理は、接続プールの枯渇を防ぎ、安定性を向上させる。全体として、接続管理の設計は高い拡張性と信頼性を備えている。
 
 ![alt text](image-5.png)
 - ngx_create_listening:
@@ -119,7 +119,7 @@ nginxはコアと多数のモジュールから構成され、コアはネット
 
 変数ハンドラとしては`geo`と`map`があり、IPアドレスや他の変数から動的に変数を生成できる。これにより柔軟な設定が可能となっている。
 
-メモリ管理面では、nginxはプロセス単位でメモリプールを使い、接続ごとに必要なバッファを動的に確保し、ポインタで効率的にデータを扱う。バッファはチェーン構造で処理され、モジュールによってはバッファ操作の複雑な判断が必要になる。nginxはスラブアロケータを使って共有メモリ領域を管理し、キャッシュメタデータなどは共有メモリ上の赤黒木構造で保持される。
+メモリ管理面では、nginxはプロセス単位でメモリプールを使い、接続ごとに必要なバッファを動的に確保し、ポインタで効率的にデータを扱う。バッファはチェーン構造で処理され、モジュールによってはバッファ操作の複雑な判断が必要になる。nginxはスラブアロケータを使って共有メモリ領域を管理し、キャッシュメタデータなどは共有メモリ上の赤黒木構造(補足)で保持される。
 
 nginxのモジュール開発は柔軟性が高いが、内部仕様の文書が不足しており、開発は難解で高度な理解を要する。Evan Millerらによるドキュメントが存在するものの、多くは逆解析の成果に基づく。開発者向けAPIやドキュメントの整備が進行中であり、今後より開かれた拡張開発が期待される。
 
@@ -128,3 +128,119 @@ nginxのモジュール開発は柔軟性が高いが、内部仕様の文書が
 ### 14.5. Lessons Learned
 
 nginxの開発から得られた教訓は、「常に改善の余地がある」ということに始まる。初期のコード設計とアーキテクチャはソフトウェアの将来を左右する重要な要素であり、開発は集中すべきである。たとえばWindows版の開発は、リソースの分散による限界を示す例である。また、nginxの普及には小規模ながらも優れた外部開発者たちによるサードパーティモジュールの貢献が大きく、今後も重要な役割を担う。
+
+
+## 補足
+### 赤黒木
+木がバランスを崩さないように、赤と黒の“色付き”ルールで調整する二分探索木。普通の二分探索木（BST）は、要素を追加していくと「片側に偏る」ことがあるが、赤黒木では、ノードに「赤」または「黒」という色を付けて、木の高さが不必要に高くなるのを防ぐ。探索・挿入・削除の計算量を O(log n) に保つためのルールを使って、自己バランスをとる。
+
+### コード
+赤黒木の基本的な操作は、
+https://github.com/nginx/nginx/blob/b6e7eb0f5792d7a52d2675ee3906e502d63c48e3/src/core/ngx_rbtree.c#L24-L93
+あたり実装されている。
+
+```c
+void
+ngx_rbtree_insert(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
+{
+    ngx_rbtree_node_t  **root, *temp, *sentinel;
+    
+    /* a binary tree insert */
+    root = &tree->root;
+    sentinel = tree->sentinel;
+
+    //空の木なら root として初期化（黒設定）
+    if (*root == sentinel) {
+        node->parent = NULL; //親なし（根ノード）
+        node->left = sentinel;//空ノードで初期化
+        node->right = sentinel;//空ノードで初期化
+        ngx_rbt_black(node);//赤黒木のルールで根ノードは黒
+        *root = node;
+        return;
+    }
+
+    //挿入すべき位置を決める
+    tree->insert(*root, node, sentinel);
+
+    /* re-balance tree */
+
+    //赤が連続している時にループが回り続ける
+    while (node != *root && ngx_rbt_is_red(node->parent)) {
+        if (node->parent == node->parent->parent->left) {
+```
+
+```c
+            //ケース1（叔父が赤）→ 色の付け替えのみ
+            temp = node->parent->parent->right;
+
+            if (ngx_rbt_is_red(temp)) {
+                ngx_rbt_black(node->parent);        //親を黒にする
+                ngx_rbt_black(temp);                //叔父を黒にする
+                ngx_rbt_red(node->parent->parent);  //祖父を赤にする
+                node = node->parent->parent;        //node = grandparent にして再起的にループを継続する
+```
+![case1](image-6.png)
+
+```c
+            } else {
+                // ケース2 → 三角形を直線に整形する回転
+                // 親が赤、叔父は黒、かつ node が「右子」→ 三角形の構造
+                if (node == node->parent->right) {
+                    node = node->parent;
+                    ngx_rbtree_left_rotate(root, sentinel, node); //左回転して「直線形」に整える
+                }
+```
+![case2](image-7.png)
+```c
+                //ケース3 → 回転して修正
+                ngx_rbt_black(node->parent);//親を黒にする
+                ngx_rbt_red(node->parent->parent);//祖父を赤にする
+                ngx_rbtree_right_rotate(root, sentinel, node->parent->parent);//右回転でバランスをとる
+                
+```
+![case3](image-8.png)
+```
+直線構造を
+
+     G(黒)
+    /
+  P(赤)
+  /
+z(赤)
+
+右回転：Pを上に持ち上げて、Gが相対的に下に降りてくるようなイメージ
+
+    P(黒)
+   /   \
+z(赤)  G(赤)
+
+```
+```c
+            }
+        } else {
+            temp = node->parent->parent->left;
+            if (ngx_rbt_is_red(temp)) {
+                ngx_rbt_black(node->parent);
+                ngx_rbt_black(temp);
+                ngx_rbt_red(node->parent->parent);
+                node = node->parent->parent;
+            } else {
+                if (node == node->parent->left) {
+                    node = node->parent;
+                    ngx_rbtree_right_rotate(root, sentinel, node);
+                }
+                ngx_rbt_black(node->parent);
+                ngx_rbt_red(node->parent->parent);
+                ngx_rbtree_left_rotate(root, sentinel, node->parent->parent);
+            }
+        }
+    }
+    ngx_rbt_black(*root);//ルートを黒に
+}
+```
+
+キャッシュメタデータの具体的な管理は、
+https://github.com/nginx/nginx/blob/b6e7eb0f5792d7a52d2675ee3906e502d63c48e3/src/http/ngx_http_file_cache.c#L2272-L2324
+あたりで実装されている。
+
+キャッシュエントリを赤黒木に挿入・削除する処理が行われている。この設計により、キャッシュエントリの操作が効率的に行われ、高速なキャッシュ管理が実現できる。（計算量はO(log n)）

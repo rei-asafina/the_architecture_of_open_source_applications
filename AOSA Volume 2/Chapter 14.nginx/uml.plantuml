@@ -245,3 +245,104 @@ ngx_close_idle_connections --> ngx_close_connection : Calls
 ngx_connection_local_sockaddr --> ngx_connection_error : Calls
 ngx_tcp_nodelay --> ngx_connection_error : Calls
 @enduml
+
+@startuml Case1_Recoloring
+title Case 1: Recoloring（叔父が赤）
+
+skinparam defaultTextAlignment center
+skinparam nodesep 50
+skinparam ranksep 50
+
+' Before
+package "Before" {
+  node "G\n(黒)" as G1
+  node "P\n(赤)" as P1
+  node "U\n(赤)" as U1
+  node "z\n(赤)" as Z1
+  node "・" as NIL1
+
+  G1 --> P1
+  G1 --> U1
+  P1 --> Z1
+  P1 --> NIL1
+}
+
+' After
+package "After" {
+  node "G\n(赤)" as G2
+  node "P\n(黒)" as P2
+  node "U\n(黒)" as U2
+  node "z\n(赤)" as Z2
+  node "・" as NIL2
+
+  G2 --> P2
+  G2 --> U2
+  P2 --> Z2
+  P2 --> NIL2
+}
+@enduml
+
+
+@startuml
+title Case 2: Left Rotation（三角形を直線に）
+
+skinparam defaultTextAlignment center
+skinparam nodesep 50
+skinparam ranksep 50
+
+' Before
+package "Before" {
+  node "G\n(黒)" as G1
+  node "P\n(赤)" as P1
+  node "・" as NIL1
+  node "z\n(赤)" as Z1
+
+  G1 --> P1
+  P1 --> NIL1
+  P1 --> Z1
+}
+
+' After
+package "After" {
+  node "G\n(黒)" as G2
+  node "z\n(赤)" as Z2
+  node "P\n(赤)" as P2
+  node "・" as NIL2
+
+  G2 --> Z2
+  Z2 --> P2
+  P2 --> NIL2
+}
+@enduml
+
+@startuml
+title Case 3: Right Rotation（回転で修正）
+
+skinparam defaultTextAlignment center
+skinparam nodesep 50
+skinparam ranksep 50
+
+' Before
+package "Before" {
+  node "G\n(黒)" as G1
+  node "P\n(赤)" as P1
+  node "z\n(赤)" as Z1
+  node "・" as NIL1
+
+  G1 --> P1
+  P1 --> Z1
+  P1 --> NIL1
+}
+
+' After
+package "After" {
+  node "P\n(黒)" as P2
+  node "z\n(赤)" as Z2
+  node "G\n(赤)" as G2
+  node "・" as NIL2
+
+  P2 --> Z2
+  P2 --> G2
+  G2 --> NIL2
+}
+@enduml
